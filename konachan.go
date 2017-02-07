@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -67,11 +68,11 @@ func main() {
 			if data == "" {
 				break
 			}
+			data = "http:" + data
 			slice = append(slice, data)
 			i++
-			// fmt.Println("http:" + data)
 		}
-
+		getPic(slice)
 		index++
 	}
 
@@ -86,5 +87,14 @@ func getCurrentDirectory() string {
 }
 
 func getPic(slice []string) {
-	fmt.Println(slice)
+	for _, url := range slice {
+		go func() {
+			fmt.Println("downloading: " + url)
+			cmd := exec.Command("axel", "-n 32", url)
+			err := cmd.Run()
+			if err != nil {
+				log.Fatal(err)
+			}
+		}()
+	}
 }
