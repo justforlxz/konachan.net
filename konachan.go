@@ -87,14 +87,14 @@ func getCurrentDirectory() string {
 }
 
 func getPic(slice []string) {
-	for _, url := range slice {
-		go func() {
+	go func() {
+		for _, url := range slice {
 			fmt.Println("downloading: " + url)
-			cmd := exec.Command("axel", "-n 32", url)
+			cmd := exec.Command("wget", "-P pic/", url)
 			err := cmd.Run()
 			if err != nil {
 				log.Fatal(err)
 			}
-		}()
-	}
+		}
+	}()
 }
