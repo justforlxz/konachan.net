@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -34,17 +35,29 @@ func main() {
 
 	var index int64 = 1
 
+	urlFile, err := os.OpenFile(getCurrentDirectory()+"/file.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	p := []byte("[]")
 	for {
 		res, _ := http.Get(url + strconv.FormatInt(index, 10))
 		byte, _ := ioutil.ReadAll(res.Body)
 		json, _ := simplejson.NewJson(byte)
 
+		if bytes.Equal(byte, p) {
+			fmt.Println("已经到网站最后一页，首次爬虫执行完毕，开始下载...")
+			getPic()
+			return
+		}
+
 		i := 0
-		slice := []string{}
 
 		for {
-
 			id, _ := json.GetIndex(i).Get("id").Int64()
+
 			if id == 0 {
 				break
 			}
@@ -69,13 +82,14 @@ func main() {
 				break
 			}
 			data = "http:" + data
-			slice = append(slice, data)
+			urlFile.WriteString(data + "\n")
+			fmt.Println("正在记录文件: " + data)
 			i++
 		}
-		getPic(slice)
 		index++
 	}
-
+	defer urlFile.Close()
+	getPic()
 }
 
 func getCurrentDirectory() string {
@@ -86,15 +100,10 @@ func getCurrentDirectory() string {
 	return strings.Replace(dir, "\\", "/", -1)
 }
 
-func getPic(slice []string) {
-	go func() {
-		for _, url := range slice {
-			fmt.Println("downloading: " + url)
-			cmd := exec.Command("wget", "-P pic/", url)
-			err := cmd.Run()
-			if err != nil {
-				log.Fatal(err)
-			}
-		}
-	}()
+func getPic() {
+	cmd := exec.Command("wget", "-i", getCurrentDirectory()+"/file.txt")
+	err := cmd.Run()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
