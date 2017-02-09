@@ -50,9 +50,14 @@ func main() {
 	}
 	p := []byte("[]")
 	for {
-		res, _ := http.Get(url + strconv.FormatInt(index, 10))
-		byte, _ := ioutil.ReadAll(res.Body)
-		json, _ := simplejson.NewJson(byte)
+		res, err := http.Get(url + strconv.FormatInt(index, 10))
+		byte, err := ioutil.ReadAll(res.Body)
+		json, err := simplejson.NewJson(byte)
+
+		if err != nil {
+			fmt.Println("我也不知道发生了什么错误，反正没请求到数据...")
+			break
+		}
 
 		if bytes.Equal(byte, p) {
 			fmt.Println("已经到网站最后一页，首次爬虫执行完毕，开始下载...")
@@ -64,16 +69,26 @@ func main() {
 
 		for {
 
-			id, _ := json.GetIndex(i).Get("id").Int64()
+			has_children, err := json.GetIndex(i).Get("has_children").Bool()
 
-			if id == 0 {
+			if err != nil {
+				fmt.Println("获取R18标志失败...")
 				break
 			}
 
-			has_children, _ := json.GetIndex(i).Get("has_children").Bool()
-
 			if !has_children {
 				fmt.Println("跳过R18...")
+				break
+			}
+
+			id, idErr := json.GetIndex(i).Get("id").Int64()
+
+			if idErr != nil {
+				fmt.Println("获取Id失败...")
+				break
+			}
+
+			if id == 0 {
 				break
 			}
 
@@ -93,7 +108,13 @@ func main() {
 				dstFile.WriteString(strconv.FormatInt(id, 10))
 				state = true
 			}
-			data, _ := json.GetIndex(i).Get("file_url").String()
+			data, dataErr := json.GetIndex(i).Get("file_url").String()
+
+			if dataErr != nil {
+				fmt.Println("获取data失败...")
+				break
+			}
+
 			if data == "" {
 				break
 			}
