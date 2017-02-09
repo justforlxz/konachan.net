@@ -20,9 +20,13 @@ import (
 var (
 	url = "http://konachan.net/post.json?page="
 
-	programPath = getCurrentDirectory() + "/id.txt"
-	ID          int64
-	state       bool = false
+	programPath  = getCurrentDirectory() + "/id.txt"
+	ID           int64
+	state        bool = false
+	has_children bool
+	id           int64
+	err          error
+	data         string
 )
 
 func main() {
@@ -50,14 +54,10 @@ func main() {
 	}
 	p := []byte("[]")
 	for {
-		res, err := http.Get(url + strconv.FormatInt(index, 10))
-		byte, err := ioutil.ReadAll(res.Body)
-		json, err := simplejson.NewJson(byte)
 
-		if err != nil {
-			fmt.Println("我也不知道发生了什么错误，反正没请求到数据...")
-			break
-		}
+		res, _ := http.Get(url + strconv.FormatInt(index, 10))
+		byte, _ := ioutil.ReadAll(res.Body)
+		json, _ := simplejson.NewJson(byte)
 
 		if bytes.Equal(byte, p) {
 			fmt.Println("已经到网站最后一页，首次爬虫执行完毕，开始下载...")
@@ -68,8 +68,11 @@ func main() {
 		i := 0
 
 		for {
+			has_children = true
+			id = 0
+			data = ""
 
-			has_children, err := json.GetIndex(i).Get("has_children").Bool()
+			has_children, err = json.GetIndex(i).Get("has_children").Bool()
 
 			if err != nil {
 				fmt.Println("获取R18标志失败...")
@@ -81,9 +84,9 @@ func main() {
 				break
 			}
 
-			id, idErr := json.GetIndex(i).Get("id").Int64()
+			id, err = json.GetIndex(i).Get("id").Int64()
 
-			if idErr != nil {
+			if err != nil {
 				fmt.Println("获取Id失败...")
 				break
 			}
@@ -108,9 +111,9 @@ func main() {
 				dstFile.WriteString(strconv.FormatInt(id, 10))
 				state = true
 			}
-			data, dataErr := json.GetIndex(i).Get("file_url").String()
+			data, err = json.GetIndex(i).Get("file_url").String()
 
-			if dataErr != nil {
+			if err != nil {
 				fmt.Println("获取data失败...")
 				break
 			}
