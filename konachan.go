@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -35,6 +36,12 @@ func main() {
 
 	var index int64 = 1
 
+	err := os.Remove(getCurrentDirectory() + "/file.txt")
+
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
 	urlFile, err := os.OpenFile(getCurrentDirectory()+"/file.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
 
 	if err != nil {
@@ -56,6 +63,13 @@ func main() {
 		i := 0
 
 		for {
+			has_children, _ := json.GetIndex(i).Get("has_children").Bool()
+
+			if !has_children {
+				fmt.Println("跳过R18...")
+				break
+			}
+
 			id, _ := json.GetIndex(i).Get("id").Int64()
 
 			if id == 0 {
@@ -64,6 +78,7 @@ func main() {
 
 			if id == ID {
 				fmt.Println("数据已最新")
+				getPic()
 				return
 			}
 
@@ -89,7 +104,6 @@ func main() {
 		index++
 	}
 	defer urlFile.Close()
-	getPic()
 }
 
 func getCurrentDirectory() string {
@@ -102,8 +116,27 @@ func getCurrentDirectory() string {
 
 func getPic() {
 	cmd := exec.Command("wget", "-i", getCurrentDirectory()+"/file.txt")
-	err := cmd.Run()
+	//显示运行的命令
+	fmt.Println(cmd.Args)
+
+	stdout, err := cmd.StdoutPipe()
+
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
 	}
+
+	cmd.Start()
+
+	reader := bufio.NewReader(stdout)
+
+	//实时循环读取输出流中的一行内容
+	for {
+		line, err2 := reader.ReadString('\n')
+		if err2 != nil || io.EOF == err2 {
+			break
+		}
+		fmt.Println(line)
+	}
+
+	cmd.Wait()
 }
