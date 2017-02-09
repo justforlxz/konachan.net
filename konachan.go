@@ -63,16 +63,17 @@ func main() {
 		i := 0
 
 		for {
-			has_children, _ := json.GetIndex(i).Get("has_children").Bool()
-
-			if !has_children {
-				fmt.Println("跳过R18...")
-				break
-			}
 
 			id, _ := json.GetIndex(i).Get("id").Int64()
 
 			if id == 0 {
+				break
+			}
+
+			has_children, _ := json.GetIndex(i).Get("has_children").Bool()
+
+			if !has_children {
+				fmt.Println("跳过R18...")
 				break
 			}
 
