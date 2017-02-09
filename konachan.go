@@ -27,6 +27,7 @@ var (
 	id           int64
 	err          error
 	data         string
+	ok           bool
 )
 
 func main() {
@@ -68,19 +69,34 @@ func main() {
 		i := 0
 
 		for {
+
 			has_children = true
 			id = 0
 			data = ""
+
+			_, ok = json.GetIndex(i).CheckGet("has_children")
+
+			if !ok {
+				break
+			}
 
 			has_children, err = json.GetIndex(i).Get("has_children").Bool()
 
 			if err != nil {
 				fmt.Println("获取R18标志失败...")
-				break
+				i++
+				continue
 			}
 
 			if !has_children {
 				fmt.Println("跳过R18...")
+				i++
+				continue
+			}
+
+			_, ok = json.GetIndex(i).CheckGet("id")
+
+			if !ok {
 				break
 			}
 
@@ -88,7 +104,8 @@ func main() {
 
 			if err != nil {
 				fmt.Println("获取Id失败...")
-				break
+				i++
+				continue
 			}
 
 			if id == 0 {
@@ -111,6 +128,12 @@ func main() {
 				dstFile.WriteString(strconv.FormatInt(id, 10))
 				state = true
 			}
+			_, ok = json.GetIndex(i).CheckGet("file_url")
+
+			if !ok {
+				break
+			}
+
 			data, err = json.GetIndex(i).Get("file_url").String()
 
 			if err != nil {
@@ -118,9 +141,6 @@ func main() {
 				break
 			}
 
-			if data == "" {
-				break
-			}
 			data = "http:" + data
 			urlFile.WriteString(data + "\n")
 			fmt.Println("正在记录文件: " + data)
