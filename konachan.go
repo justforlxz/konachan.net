@@ -110,7 +110,7 @@ func main() {
 				state = true
 			}
 
-			data = "http:" + data
+			data = "http:" + source.FileURL
 			urlFile.WriteString(data + "\n")
 			fmt.Println("正在记录文件: " + data)
 		}
