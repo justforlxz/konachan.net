@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -13,8 +14,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-
-	simplejson "github.com/bitly/go-simplejson"
 )
 
 var (
@@ -25,10 +24,15 @@ var (
 	state        bool = false
 	has_children bool
 	id           int64
-	err          error
 	data         string
 	ok           bool
 )
+
+type image struct {
+	ID          int64  `json:"id"`
+	FileURL     string `json:"file_url"`
+	HasChildren bool   `json:"has_children"`
+}
 
 func main() {
 
@@ -56,9 +60,25 @@ func main() {
 	p := []byte("[]")
 	for {
 
-		res, _ := http.Get(url + strconv.FormatInt(index, 10))
-		byte, _ := ioutil.ReadAll(res.Body)
-		json, _ := simplejson.NewJson(byte)
+		res, err := http.Get(url + strconv.FormatInt(index, 10))
+
+		if err != nil {
+			fmt.Println("Get error:", err)
+			return
+		}
+
+		byte, err := ioutil.ReadAll(res.Body)
+
+		if err != nil {
+			fmt.Println("Reading error:", err)
+			return
+		}
+
+		imageArray := make([]image, 0)
+
+		if err = json.Unmarshal(byte, &imageArray); err != nil {
+			fmt.Println("Unmarshal error: ", err)
+		}
 
 		if bytes.Equal(byte, p) {
 			fmt.Println("已经到网站最后一页，首次爬虫执行完毕，开始下载...")
@@ -66,56 +86,17 @@ func main() {
 			return
 		}
 
-		i := 0
+		for _, source := range imageArray {
 
-		for {
-
-			has_children = true
-			id = 0
-			data = ""
-
-			_, ok = json.GetIndex(i).CheckGet("has_children")
-
-			if !ok {
-				break
-			}
-
-			has_children, err = json.GetIndex(i).Get("has_children").Bool()
-
-			if err != nil {
-				fmt.Println("获取R18标志失败...")
-				i++
-				continue
-			}
-
-			if !has_children {
-				fmt.Println("跳过R18...")
-				i++
-				continue
-			}
-
-			_, ok = json.GetIndex(i).CheckGet("id")
-
-			if !ok {
-				break
-			}
-
-			id, err = json.GetIndex(i).Get("id").Int64()
-
-			if err != nil {
-				fmt.Println("获取Id失败...")
-				i++
-				continue
-			}
-
-			if id == 0 {
-				break
-			}
-
-			if id == ID {
+			if source.ID == ID {
 				fmt.Println("数据已最新")
 				getPic()
 				return
+			}
+
+			if source.HasChildren {
+				fmt.Println("正在跳过R18...")
+				continue
 			}
 
 			if state == false {
@@ -128,23 +109,10 @@ func main() {
 				dstFile.WriteString(strconv.FormatInt(id, 10))
 				state = true
 			}
-			_, ok = json.GetIndex(i).CheckGet("file_url")
-
-			if !ok {
-				break
-			}
-
-			data, err = json.GetIndex(i).Get("file_url").String()
-
-			if err != nil {
-				fmt.Println("获取data失败...")
-				break
-			}
 
 			data = "http:" + data
 			urlFile.WriteString(data + "\n")
 			fmt.Println("正在记录文件: " + data)
-			i++
 		}
 		index++
 	}
